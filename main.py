@@ -16,12 +16,18 @@ ALLOWED_EMAIL_DOMAIN = "omni.co"
 
 def require_login():
     user = st.user
+    st.write("🔍 [debug] `st.user` object:", user)  # Debug output
+
     if user is None:
-        st.stop()  # Not signed in yet
+        st.warning("⚠️ [debug] No user detected — user not signed in yet.")
+        st.stop()
 
     email = user.get("email", "")
+    st.write("📧 [debug] Detected user email:", email)  # Debug email
+
     if not email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
         st.error("🚫 You are not authorized to use this app.")
+        st.warning(f"⚠️ [debug] Unauthorized domain: {email}")
         st.stop()
 
 # Where we’ll store everything
