@@ -12,23 +12,23 @@ import json
 from datetime import datetime, timedelta, timezone
 import uuid
 
-ALLOWED_EMAIL_DOMAIN = "omni.co"
+# ALLOWED_EMAIL_DOMAIN = "omni.co"
 
-def require_login():
-    user = st.user
-    st.write("🔍 [debug] `st.user` object:", user)  # Debug output
+# def require_login():
+#     user = st.user
+#     st.write("🔍 [debug] `st.user` object:", user)  # Debug output
 
-    if user is None:
-        st.warning("⚠️ [debug] No user detected — user not signed in yet.")
-        st.stop()
+#     if user is None:
+#         st.warning("⚠️ [debug] No user detected — user not signed in yet.")
+#         st.stop()
 
-    email = user.get("email", "")
-    st.write("📧 [debug] Detected user email:", email)  # Debug email
+#     email = user.get("email", "")
+#     st.write("📧 [debug] Detected user email:", email)  # Debug email
 
-    if not email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
-        st.error("🚫 You are not authorized to use this app.")
-        st.warning(f"⚠️ [debug] Unauthorized domain: {email}")
-        st.stop()
+#     if not email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
+#         st.error("🚫 You are not authorized to use this app.")
+#         st.warning(f"⚠️ [debug] Unauthorized domain: {email}")
+#         st.stop()
 
 # Where we’ll store everything
 CHAT_LOG_PATH = "chat_history.json"
@@ -763,7 +763,7 @@ def render_message(role, message, assistant_icon_path="assets/blobby.png"):
             render_unified_sources(message)
 
 def main():
-    require_login()
+    # require_login()
     # ───────────────────────────────── 0. KEYS / CLIENTS ─────────────────────────
     slack_token = os.environ.get("SLACK_API_TOKEN") or st.secrets.get("SLACK_API_TOKEN")
     openai_key  = os.environ.get("OPENAI_API_KEY")   or st.secrets.get("OPENAI_API_KEY")
