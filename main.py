@@ -822,7 +822,7 @@ def main():
 
     # ───────────────────────────────── 2. HEADER INFO ────────────────────────────
     if docs_path and os.path.exists(docs_path) and discourse_path and os.path.exists(discourse_path):
-        st.success("✅ Searching Docs + Slack + Discourse. Add newline (shift+enter) to run without cache")
+        st.success("✅ Searching Docs + Slack + Discourse.")
         search_source = st.selectbox(
             "Search in:",
             ["all", "slack", "docs", "discourse"],
@@ -834,7 +834,7 @@ def main():
             }[x],
         )
     else:
-        st.info("ℹ️ Slack-only search. Add newline (shift+enter) to run without cache")
+        st.info("ℹ️ Slack-only search.")
         search_source = "slack"
 
     # ───────────────────────────────── 3. RENDER PAST CHAT ───────────────────────
