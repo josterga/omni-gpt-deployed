@@ -11,33 +11,24 @@ from typing import List, Dict
 import json
 from datetime import datetime, timedelta, timezone
 import uuid
-import duckdb
-import logging
 
-ALLOWED_EMAIL_DOMAIN = "omni.co"
+# ALLOWED_EMAIL_DOMAIN = "omni.co"
 
-def require_login():
-    user = st.experimental_user
-    if user is None:
-        st.stop()  # Not signed in yet
+# def require_login():
+#     user = st.user
+#     st.write("🔍 [debug] `st.user` object:", user)  # Debug output
 
-    email = user.get("email", "")
-    logging.warning(f"User session email: {email}")
+#     if user is None:
+#         st.warning("⚠️ [debug] No user detected — user not signed in yet.")
+#         st.stop()
 
-def connect_md():
-    os.environ["MOTHERDUCK_TOKEN"] = os.getenv("MOTHERDUCK_TOKEN")  # Use Streamlit secrets too
-    return duckdb.connect("md:omni_rag_logs")
+#     email = user.get("email", "")
+#     st.write("📧 [debug] Detected user email:", email)  # Debug email
 
-def initialize_md_log_table():
-    con = connect_md()
-    con.execute("""
-        CREATE TABLE IF NOT EXISTS rag_chat_logs (
-            id TEXT PRIMARY KEY,
-            session_id TEXT,
-            timestamp_utc TIMESTAMP,
-            data_json JSON
-        )
-    """)
+#     if not email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
+#         st.error("🚫 You are not authorized to use this app.")
+#         st.warning(f"⚠️ [debug] Unauthorized domain: {email}")
+#         st.stop()
 
 # Where we’ll store everything
 CHAT_LOG_PATH = "chat_history.json"
@@ -56,21 +47,6 @@ def _load_history(path: str) -> list[dict]:
 def _save_history(history: list[dict], path: str) -> None:
     with open(path, "w") as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
-
-def save_json_turn_to_md(session_id: str, turn_data: dict):
-    con = connect_md()
-    turn_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
-    con.execute("""
-        INSERT INTO rag_chat_logs (id, session_id, timestamp_utc, data_json)
-        VALUES (?, ?, ?, ?)
-    """, (
-        turn_id,
-        session_id,
-        now,
-        json.dumps(turn_data)
-    ))
 
 def _new_session() -> dict:
     """Start a fresh session block."""
@@ -787,12 +763,8 @@ def render_message(role, message, assistant_icon_path="assets/blobby.png"):
             render_unified_sources(message)
 
 def main():
-
-    require_login()
+    # require_login()
     # ───────────────────────────────── 0. KEYS / CLIENTS ─────────────────────────
-    connect_md()
-    initialize_md_log_table()   
-
     slack_token = os.environ.get("SLACK_API_TOKEN") or st.secrets.get("SLACK_API_TOKEN")
     openai_key  = os.environ.get("OPENAI_API_KEY")   or st.secrets.get("OPENAI_API_KEY")
     if not slack_token or not openai_key:
@@ -850,7 +822,7 @@ def main():
 
     # ───────────────────────────────── 2. HEADER INFO ────────────────────────────
     if docs_path and os.path.exists(docs_path) and discourse_path and os.path.exists(discourse_path):
-        st.success("✅ Searching Docs + Slack + Discourse. Add newline (shift+enter) to run without cache")
+        st.success("✅ Searching Docs + Slack + Discourse.")
         search_source = st.selectbox(
             "Search in:",
             ["all", "slack", "docs", "discourse"],
@@ -862,7 +834,7 @@ def main():
             }[x],
         )
     else:
-        st.info("ℹ️ Slack-only search. Add newline (shift+enter) to run without cache")
+        st.info("ℹ️ Slack-only search.")
         search_source = "slack"
 
     # ───────────────────────────────── 3. RENDER PAST CHAT ───────────────────────
@@ -967,8 +939,6 @@ def main():
         if st.session_state.session_obj not in st.session_state.history_file:
             st.session_state.history_file.append(st.session_state.session_obj)
         _save_history(st.session_state.history_file, CHAT_LOG_PATH)
-        save_json_turn_to_md(st.session_state.session_obj["session_id"], turn)
-
 
         # ---- update FAISS index
         vec = np.array([query_emb], dtype="float32")
