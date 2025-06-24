@@ -1001,7 +1001,7 @@ def main():
 
     # ───────────────────────────────── 2. HEADER INFO ────────────────────────────
     if docs_path and os.path.exists(docs_path) and discourse_path and os.path.exists(discourse_path):
-        st.success("✅ Searching Docs + Slack + Community")
+        st.success("✅ Searching Docs + Slack + Community. Use \"Hey blobby\" for MCP.")
     else:
         st.info("ℹ️ Slack-only search. Add newline (shift+enter) to run without cache")
 
