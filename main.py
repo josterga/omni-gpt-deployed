@@ -1038,7 +1038,7 @@ def main():
 
     # ───────────────────────────────── 5. HANDLE ONE TURN ────────────────────────
     if prompt := st.chat_input("Ask anything about Omni"):
-        # Add user message to session state FIRST - regardless of routing
+            # Add user message to session state FIRST
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         decision = rag_system.decide_rag_or_mcp(prompt)
@@ -1086,8 +1086,7 @@ def main():
                     st.session_state.messages.append({"role": "assistant", "content": f"Error: {str(e)}"})
                     st.rerun()
                     return
-        # Add user message to session state FIRST
-        st.session_state.messages.append({"role": "user", "content": prompt})
+
         
         # ----- Cmd+Shift+Enter / //nocache detection
         bypass_cache = prompt.endswith("\n")
