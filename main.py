@@ -11,26 +11,9 @@ from typing import List, Dict
 import json
 from datetime import datetime, timedelta, timezone
 import uuid
+import requests
 
-# ALLOWED_EMAIL_DOMAIN = "omni.co"
-
-# def require_login():
-#     user = st.user
-#     st.write("🔍 [debug] `st.user` object:", user)  # Debug output
-
-#     if user is None:
-#         st.warning("⚠️ [debug] No user detected — user not signed in yet.")
-#         st.stop()
-
-#     email = user.get("email", "")
-#     st.write("📧 [debug] Detected user email:", email)  # Debug email
-
-#     if not email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
-#         st.error("🚫 You are not authorized to use this app.")
-#         st.warning(f"⚠️ [debug] Unauthorized domain: {email}")
-#         st.stop()
-
-# Where we’ll store everything
+# Where we'll store everything
 CHAT_LOG_PATH = "chat_history.json"
 load_dotenv()
 
@@ -55,6 +38,117 @@ def _new_session() -> dict:
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "turns": []              # will hold individual Q/A pairs
     }
+
+class MCPClient:
+    def __init__(self, base_url: str, api_key: str = None, model_id: str = None, topic_name: str = None):
+        self.base_url = base_url
+        self.api_key = api_key
+        self.model_id = model_id
+        self.topic_name = topic_name
+        self.initialized = False
+
+    def _headers(self):
+        headers = {
+            "Authorization": f"Bearer {self.api_key}" if self.api_key else "",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "X-MCP-Model-ID": self.model_id or "",
+            "X-MCP-Topic-Name": self.topic_name or ""
+        }
+        print(f"[DEBUG] MCP request headers: {headers}")
+        return headers
+
+    def _post(self, payload):
+        print(f"[DEBUG] MCP request payload: {json.dumps(payload, indent=2)}")
+        response = requests.post(self.base_url, headers=self._headers(), json=payload)
+        print(f"[DEBUG] MCP response status: {response.status_code}")
+        print(f"[DEBUG] MCP response text: {response.text!r}")
+        return response
+
+    def initialize(self):
+        if self.initialized:
+            print("[DEBUG] MCP already initialized; skipping.")
+            return
+
+        payload = {
+            "jsonrpc": "2.0",
+            "id": "uuid-1",
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "1.0",
+                "capabilities": {},
+                "clientInfo": {
+                    "name": "omni-gpt",
+                    "version": "1.0"
+                }
+            }
+        }
+        print("[DEBUG] Initializing MCP...")
+        self._post(payload)
+        self.initialized = True
+
+    def run_inference(self, prompt: str) -> str:
+        self.initialize()
+
+        # Step 1: Convert NL to Omni query
+        query_gen_payload = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "tools/call",
+            "params": {                       # <- outer params
+                "name": "naturalLanguageToOmniQuery",
+                "arguments": {                  # <- inner params required by the tool
+                    "prompt": prompt,
+                    "modelId": self.model_id,
+                    "topicName": self.topic_name,
+                    "apiKey": self.api_key
+                }
+            }
+        }
+        print(f"[DEBUG] Sending naturalLanguageToOmniQuery for prompt: {prompt}")
+        response = self._post(query_gen_payload)
+
+        try:
+            data = response.text.split("data: ", 1)[1]
+            parsed = json.loads(data)
+            
+            # Step 1: Extract and decode the query
+            query_text = parsed["result"]["content"][0]["text"]
+            query_dict = json.loads(query_text)   # now contains {"query": {...}}
+            
+            # Step 2: Extract the actual Omni query object
+            omni_query = query_dict["query"]
+
+            # Optional debug print
+            print(f"[DEBUG] Parsed Omni query: {json.dumps(omni_query, indent=2)}")
+            
+        except Exception as e:
+            raise RuntimeError(f"Failed to parse Omni query: {e}")
+        
+        query_json_string = json.dumps(omni_query)
+        # Step 2: Run Omni query
+        query_run_payload = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "tools/call",
+            "params": {                       # <- outer params
+                "name": "runOmniQuery",
+                "arguments": {                  # <- inner params required by the tool
+                    "omniQuery": query_json_string,
+                    "apiKey": self.api_key
+                }
+            }
+        }
+        print("[DEBUG] Sending Omni query to queryRunner...")
+        run_response = self._post(query_run_payload)
+
+        try:
+            run_data = run_response.text.split("data: ", 1)[1]
+            parsed_run = json.loads(run_data)
+            print(f"[DEBUG] Final MCP result output: {parsed_run["result"]["content"][0]["text"]}")
+            return parsed_run["result"]["content"][0]["text"]
+        except Exception as e:
+            raise RuntimeError(f"Failed to run Omni query: {e}")
 
 
 class NaturalLanguageSlackSearch:
@@ -477,8 +571,9 @@ class SlackRAGSystem:
         """Process threads as complete units rather than individual messages"""
         thread_contexts = {}
         standalone_messages = []
-        
+
         for message in messages:
+
             thread_ts = message.get('thread_ts')
             
             if thread_ts:
@@ -577,6 +672,38 @@ class UnifiedRAGSystem(SlackRAGSystem):
         self.doc_search = DocumentSearchSystem(self.openai_client, docs_json_path) if docs_json_path else None
         self.discourse_search = DiscourseSearchSystem(self.openai_client, discourse_json_path) if discourse_json_path else None
     
+    def decide_rag_or_mcp(self, query: str) -> str:
+        """
+        Ask OpenAI whether to route this to RAG or send to MCP.
+        Returns: "rag" or "mcp"
+        """
+        try:
+            resp = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You're a routing agent. Given a user's query, decide if it should be handled by:\n"
+                            "- 'rag' → if the question is about documentation, internal discussion, or general support (Slack, Docs, Discourse).\n"
+                            "- 'mcp' → if the question is about data insights, metrics, summaries, or begins with 'hey blobby', 'ask blobby', etc.\n\n"
+                            "Respond with ONLY one word: 'rag' or 'mcp'."
+                        )
+                    },
+                    {"role": "user", "content": query}
+                ],
+                max_tokens=3,
+                temperature=0
+            )
+
+            decision_raw = resp.choices[0].message.content.strip().lower()
+            print(f"[DEBUG] OpenAI routing raw response: {decision_raw}")
+            return decision_raw if decision_raw in {"rag", "mcp"} else "rag"
+
+        except Exception as e:
+            st.warning(f"Routing failed: {e}")
+            return "rag"
+        
     def process_query_by_source(self, user_query: str, source: str) -> str:
         """Process query differently based on search source"""
         if source == "docs":
@@ -710,7 +837,7 @@ class UnifiedRAGSystem(SlackRAGSystem):
             return f"Error generating response: {str(e)}"
 
 def format_rag_response(rag_response: str) -> str:
-    return f"### Response\n\n{rag_response}\n"
+    return f"{rag_response}\n"
 
 def render_unified_sources(unified_results: Dict):
     """Show source list for all three sources."""
@@ -719,7 +846,7 @@ def render_unified_sources(unified_results: Dict):
     doc_count = sum(1 for r in combined_results if r["source_type"] == "docs")
     discourse_count = sum(1 for r in combined_results if r["source_type"] == "discourse")
 
-    with st.expander(f"View Sources ({slack_count} Slack, {doc_count} Docs, {discourse_count} Discourse)", expanded=False):
+    with st.expander(f"View Sources ({slack_count} Slack, {doc_count} Docs, {discourse_count} Community)", expanded=False):
         for i, res in enumerate(combined_results, 1):
             src = res.get("source_type")
             
@@ -727,49 +854,101 @@ def render_unified_sources(unified_results: Dict):
                 ch = res.get("channel", "—")
                 link = res.get("link") or res.get("permalink") or res.get("url")
                 if link:
-                    st.write(f"**{i}.** [#{ch}]({link})")
+                    st.markdown(f"**{i}.** [#{ch}]({link})")
                 else:
-                    st.write(f"**{i}.** #{ch}")
+                    st.markdown(f"**{i}.** #{ch}")
                     
             elif src == "docs":
                 title = res.get("title", "Untitled")
-                if res.get("url"):
-                    st.write(f"**{i}.** [Open doc](https://docs.omni.co/{res['url'][3:-3]})")
+                doc_path = res.get("url") or res.get("link")
+                if doc_path:
+                    clean_path = doc_path[3:-3]
+                    full_link = f"https://docs.omni.co/{clean_path}"
+                    st.markdown(f"**{i}.** [Open doc: {title}]({full_link})")
                 else:
-                    st.write(f"**{i}.** {title}")
+                    st.markdown(f"**{i}.** {title} (link not available)")
                     
             elif src == "discourse":
                 title = res.get("title", "Untitled")
-                url = res.get("url", "")
+                url = res.get("url", "") or res.get("link")
                 if url:
-                    st.write(f"**{i}.** [Discourse: {title}]({url})")
+                    st.markdown(f"**{i}.** [Community: {title}]({url})")
                 else:
-                    st.write(f"**{i}.** Discourse: {title}")
+                    st.markdown(f"**{i}.** Community: {title}")
 
 def render_message(role, message, assistant_icon_path="assets/blobby.png"):
-    cols = st.columns([1, 10])
-
     if role == "user":
-        with cols[0]: st.markdown("You:")
-        with cols[1]: st.markdown(message)
+        # User message bubble on the right
+        st.markdown(f"""
+        <div style="display: flex; justify-content: flex-end; margin: 10px 0;">
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 12px 16px;
+                border-radius: 18px;
+                max-width: 70%;
+                word-wrap: break-word;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                font-size: 14px;
+                line-height: 1.4;
+            ">
+                {message}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     elif role == "assistant":
+        cols = st.columns([1, 10])
         with cols[0]: st.image(assistant_icon_path, width=32)
         with cols[1]: st.markdown(message)          # already formatted HTML/MD
 
     elif role == "sources":                         # 👈 new
         # put the expander back when replaying history
+        cols = st.columns([1, 10])
         with cols[1]:
             render_unified_sources(message)
+    
+    elif role == "raw_queries":                     # 👈 new
+        # put the raw queries expander back when replaying history
+        cols = st.columns([1, 10])
+        with cols[1]:
+            render_raw_queries(message)
+
+    elif role == "routing":
+        cols = st.columns([1, 10])
+        with cols[1]:
+            st.markdown(f"*{message}*")
+
+def render_raw_queries(raw_queries: Dict):
+    """Show raw queries used for the search"""
+    with st.expander("Raw queries", expanded=False):
+        if raw_queries.get("slack"):
+            st.markdown(f"**Slack query:** `{raw_queries['slack']}`")
+        if raw_queries.get("docs"):
+            st.markdown(f"**Docs query:** `{raw_queries['docs']}`")
 
 def main():
-    # require_login()
+
     # ───────────────────────────────── 0. KEYS / CLIENTS ─────────────────────────
     slack_token = os.environ.get("SLACK_API_TOKEN") or st.secrets.get("SLACK_API_TOKEN")
     openai_key  = os.environ.get("OPENAI_API_KEY")   or st.secrets.get("OPENAI_API_KEY")
     if not slack_token or not openai_key:
         st.error("Please set SLACK_API_TOKEN and OPENAI_API_KEY.")
         st.stop()
+        
+    mcp_url = os.getenv("MCP_URL")
+    mcp_key = os.getenv("MCP_API_KEY")
+    mcp_model_id = os.getenv("MCP_MODEL_ID")
+    mcp_topic_name = os.getenv("MCP_TOPIC_NAME")
+
+    use_mcp = all([mcp_url, mcp_key, mcp_model_id, mcp_topic_name])
+
+    mcp_client = MCPClient(
+        base_url=mcp_url,
+        api_key=mcp_key,
+        model_id=mcp_model_id,
+        topic_name=mcp_topic_name
+    ) if use_mcp else None
 
     docs_path   = "temp_docs.json"
     discourse_path = "discourse_embeddings.json"
@@ -822,27 +1001,91 @@ def main():
 
     # ───────────────────────────────── 2. HEADER INFO ────────────────────────────
     if docs_path and os.path.exists(docs_path) and discourse_path and os.path.exists(discourse_path):
-        st.success("✅ Searching Docs + Slack + Discourse.")
-        search_source = st.selectbox(
-            "Search in:",
-            ["all", "slack", "docs", "discourse"],
-            format_func=lambda x: {
-                "all": "All Sources", 
-                "slack": "Slack only", 
-                "docs": "Docs only",
-                "discourse": "Discourse only"
-            }[x],
-        )
+        st.success("✅ Searching Docs + Slack + Community")
     else:
-        st.info("ℹ️ Slack-only search.")
-        search_source = "slack"
+        st.info("ℹ️ Slack-only search. Add newline (shift+enter) to run without cache")
 
     # ───────────────────────────────── 3. RENDER PAST CHAT ───────────────────────
     for m in st.session_state.messages:
         render_message(m["role"], m["content"])
 
-    # ───────────────────────────────── 4. HANDLE ONE TURN ────────────────────────
+    # ───────────────────────────────── 4. SEARCH INTERFACE ────────────────────────
+    # Fixed search interface at the bottom
+    st.markdown("---")
+    
+    # Search source selector
+    if "search_source" not in st.session_state:
+        st.session_state.search_source = "all"
+    
+    if docs_path and os.path.exists(docs_path) and discourse_path and os.path.exists(discourse_path):
+        search_source = st.selectbox(
+            "Search in:",
+            ["all", "slack", "docs", "discourse"],
+            index=["all", "slack", "docs", "discourse"].index(st.session_state.search_source),
+            format_func=lambda x: {
+                "all": "All Sources", 
+                "slack": "Slack only", 
+                "docs": "Docs only",
+                "discourse": "Community only"
+            }[x],
+            key="search_source_selector"
+        )
+        st.session_state.search_source = search_source
+    else:
+        st.info("ℹ️ Slack-only search.")
+        search_source = "slack"
+        st.session_state.search_source = search_source
+
+    # ───────────────────────────────── 5. HANDLE ONE TURN ────────────────────────
     if prompt := st.chat_input("Ask anything about Omni"):
+        # Add user message to session state FIRST - regardless of routing
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        decision = rag_system.decide_rag_or_mcp(prompt)
+        
+        # Add routing decision to messages for persistence
+        st.session_state.messages.append({"role": "routing", "content": f"Routing to {decision.upper()}"})
+        
+        if decision == "mcp" and use_mcp:
+            with st.spinner("Routing to MCP..."):
+                try:
+                    response = mcp_client.run_inference(prompt)
+                    
+                    # Add MCP response to session state
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+
+                    # Create turn record for history
+                    turn = {
+                        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                        "user_query": prompt,
+                        "query_embedding": rag_system.get_embeddings([prompt])[0].tolist(),
+                        "raw_queries": {"mcp": True},
+                        "assistant_response": response,
+                        "sources": [],
+                    }
+
+                    # Save to session and history
+                    st.session_state.session_obj["turns"].append(turn)
+                    if st.session_state.session_obj not in st.session_state.history_file:
+                        st.session_state.history_file.append(st.session_state.session_obj)
+                    _save_history(st.session_state.history_file, CHAT_LOG_PATH)
+
+                    # Update FAISS cache for MCP queries too
+                    vec = np.array([turn["query_embedding"]], dtype="float32")
+                    faiss.normalize_L2(vec)
+                    if st.session_state.cache_index is None:
+                        st.session_state.cache_index = faiss.IndexFlatIP(len(turn["query_embedding"]))
+                    st.session_state.cache_index.add(vec)
+                    st.session_state.cache_turns.append(turn)
+
+                    st.rerun()
+                    return
+                except Exception as e:
+                    st.error(f"Failed MCP call: {e}")
+                    # Add error message to session state for persistence
+                    st.session_state.messages.append({"role": "assistant", "content": f"Error: {str(e)}"})
+                    st.rerun()
+                    return
         # Add user message to session state FIRST
         st.session_state.messages.append({"role": "user", "content": prompt})
         
@@ -912,8 +1155,21 @@ def main():
             "role": "sources", 
             "content": unified_results
         })
+        
+        # Add raw queries to session state
+        raw_queries = {}
+        if slack_query:
+            raw_queries["slack"] = slack_query
+        if docs_query:
+            raw_queries["docs"] = docs_query
+        
+        if raw_queries:
+            st.session_state.messages.append({
+                "role": "raw_queries",
+                "content": raw_queries
+            })
 
-        # ────────────────────────── 5. LOG TURN & UPDATE CACHE ───────────────────
+        # ────────────────────────── 6. LOG TURN & UPDATE CACHE ───────────────────
         query_emb = rag_system.get_embeddings([prompt])[0].tolist()
         turn = {
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
