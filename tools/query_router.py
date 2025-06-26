@@ -9,6 +9,7 @@ from tools.mcp_client import MCPClient
 from models.data_models import RAGResponse, RetrievedContext, UserQuery
 import numpy as np
 import faiss
+import tiktoken
 
 class QueryRouter:
     def __init__(
@@ -252,36 +253,73 @@ class QueryRouter:
     def _synthesize(self, query: str, contexts: list[RetrievedContext]) -> str:
         if not contexts:
             return "No relevant information found."
-        
-        # Sort contexts by score to prioritize higher-scoring results
+
+        # Sort by score descending
         sorted_contexts = sorted(contexts, key=lambda x: x.score, reverse=True)
-        
-        # Build context text for the prompt - increased from 500 to 2000 characters
-        context_text = "\n\n".join([
-            f"Source: {ctx.source.upper()}\nTitle: {ctx.metadata.get('title', 'N/A')}\nContent: {ctx.text[:2000]}..."
-            for ctx in sorted_contexts[:8]  # Reduced from 10 to 8 to allow more content per context
-        ])
-        # print(context_text)
+
+        # Tokenizer for GPT-4 family
+        tokenizer = tiktoken.encoding_for_model("gpt-4o")
+        max_tokens_per_context = 512
+        context_snippets = []
+
+        for ctx in sorted_contexts:
+            tokens = tokenizer.encode(ctx.text)
+            truncated_text = tokenizer.decode(tokens[:max_tokens_per_context])
+            context_snippets.append(
+                f"Source: {ctx.source.upper()}\nTitle: {ctx.metadata.get('title', 'N/A')}\nContent:\n{truncated_text.strip()}"
+            )
+            if len(context_snippets) >= 8:
+                break
+
+        context_text = "\n\n---\n\n".join(context_snippets)
+
         rag_prompt = f"""
-        Based on the following information from Slack conversations, documentation, and discourse discussions, 
-        please answer the user's question. Clearly indicate which sources you're using.
-        
-        User Question: {query}
-        
-        Available Information:
-        {context_text}
-        
-        Please provide a comprehensive answer, citing whether information comes from 
-        Slack discussions, official documentation, or discourse community posts.
-        """
-        
+    You are an AI assistant for Omni Analytics. You are answering the user's question using **only the provided information**, which includes Slack conversations, official documentation, and community (discourse) discussions.
+
+    **Important Instructions:**
+    - Use only the provided context. **Do not hallucinate** or invent facts.
+    - Clearly cite where each point comes from (e.g., "Slack", "Documentation", "Community").
+    - Follow the answer structure below.
+
+    ---
+
+    **User Question**:
+    {query}
+
+    ---
+
+    **Available Information**:
+    {context_text}
+
+    ---
+
+    **Answer Format**:
+
+    1. **Answer**  
+    - Summarize the correct response in a clear, human-readable way.  
+    - Use only the information from the provided context.  
+    - Do **not** hallucinate or add unstated assumptions.
+    - If the question or context involves structured data (e.g., YAML, JSON, config files, code), include a **generic example** formatted in a fenced code block.
+
+    2. **Source Highlights**  
+    - List key facts or data points from the sources that directly support the answer.  
+    - Do not restate entire paragraphs.
+
+    3. **Unanswered Questions** *(if applicable)*  
+    - Note any aspects of the user’s question that the provided information does **not** answer.  
+    - Be concise but honest about the gap.
+    - If there are no unanswered questions, don't include this section as part of your answer.
+
+    Now write your answer.
+    """
+
         resp = self.openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are an AI assistant answering questions about Omni Analytics using both Slack conversations and official documentation."},
+                {"role": "system", "content": "You are an AI assistant answering questions about Omni Analytics using retrieved context."},
                 {"role": "user", "content": rag_prompt}
             ],
             max_tokens=1000,
-            temperature=0.3
+            temperature=0.3,
         )
         return resp.choices[0].message.content

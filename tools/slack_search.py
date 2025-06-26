@@ -92,12 +92,13 @@ class SlackSearch:
         return cleaned_query if cleaned_query.strip() else user_query
 
     def search_messages(self, query: str, count: int = 50) -> List[Dict]:
+        contexts = []
         if self.client is None:
             print("Slack search disabled - no valid token")
             return []
 
         salted_query = self.enhanced_salt_query(query)
-        print(f"Slack search query: {salted_query}")
+        # print(f"Slack search query: {salted_query}")
 
         try:
             response = self.client.search_messages(
@@ -228,7 +229,6 @@ class SlackSearch:
             scores = np.dot(vectors, query_vec.T).squeeze()
 
             ranked = sorted(zip(scores, contexts), key=lambda x: x[0], reverse=True)
-            # print([ctx for score, ctx in ranked])
             return [ctx for score, ctx in ranked]
         except Exception as e:
             print(f"Ranking failed: {e}")
