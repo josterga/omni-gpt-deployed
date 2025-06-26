@@ -25,7 +25,7 @@ class QueryRouter:
     ):
         # Core clients
         self.openai = OpenAI(api_key=openai_api_key)
-        self.slack = SlackSearch(token=slack_token)
+        self.slack = SlackSearch(token=slack_token, openai_client=self.openai)
         self.docs = DocumentSearch(json_path=docs_json, openai_client=self.openai)
         self.discourse = DiscourseSearch(json_path=discourse_json, openai_client=self.openai)
         self.reranker = Reranker(
@@ -261,7 +261,7 @@ class QueryRouter:
             f"Source: {ctx.source.upper()}\nTitle: {ctx.metadata.get('title', 'N/A')}\nContent: {ctx.text[:2000]}..."
             for ctx in sorted_contexts[:8]  # Reduced from 10 to 8 to allow more content per context
         ])
-        
+        # print(context_text)
         rag_prompt = f"""
         Based on the following information from Slack conversations, documentation, and discourse discussions, 
         please answer the user's question. Clearly indicate which sources you're using.

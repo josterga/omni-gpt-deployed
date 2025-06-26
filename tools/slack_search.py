@@ -8,7 +8,7 @@ import tiktoken
 import os
 
 class SlackSearch:
-    def __init__(self, token: str):
+    def __init__(self, token: str, openai_client):
         if not token or token == "None":
             print("Warning: No Slack token provided. Slack search will be disabled.")
             self.client = None
@@ -16,6 +16,7 @@ class SlackSearch:
             self.client = WebClient(token=token)
         self.encoder = tiktoken.encoding_for_model("text-embedding-3-small")
         self.max_tokens = 250
+        self.openai = openai_client
 
     def intelligent_query_transform(self, user_query: str) -> str:
         transform_prompt = f"""
@@ -110,7 +111,10 @@ class SlackSearch:
                 messages = response.get('messages', {}).get('matches', [])
                 if messages:
                     contexts = self.extract_thread_contexts(messages)
+                    # Rerank by semantic similarity
+                    contexts = self.rank_contexts_by_relevance(query, contexts)
                     return contexts
+                return contexts
             return []
         except SlackApiError as e:
             if e.response['error'] == 'not_authed':
@@ -224,6 +228,7 @@ class SlackSearch:
             scores = np.dot(vectors, query_vec.T).squeeze()
 
             ranked = sorted(zip(scores, contexts), key=lambda x: x[0], reverse=True)
+            # print([ctx for score, ctx in ranked])
             return [ctx for score, ctx in ranked]
         except Exception as e:
             print(f"Ranking failed: {e}")
