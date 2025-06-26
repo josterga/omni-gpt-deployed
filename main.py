@@ -20,6 +20,10 @@ from models.data_models import UserQuery
 CHAT_LOG_PATH = "chat_history.json"
 BYPASS_CACHE = True  # Set to True to always bypass cache, False to enable cache
 
+# Update default paths for embeddings
+DOCS_JSON_DEFAULT = "models/embeddings/temp_docs.json"
+DISCOURSE_JSON_DEFAULT = "models/embeddings/discourse_embeddings.json"
+
 def _load_history(path: str) -> list[dict]:
     """Load chat history from JSON file"""
     try:
@@ -85,8 +89,8 @@ def main():
         st.warning("⚠️ SLACK_TOKEN not found. Slack search will be disabled.")
     
     # Paths for JSON indices
-    docs_json = config.get("DOCS_JSON_PATH", "temp_docs.json")
-    discourse_json = config.get("DISCOURSE_JSON_PATH", "discourse_embeddings.json")
+    docs_json = config.get("DOCS_JSON_PATH", DOCS_JSON_DEFAULT)
+    discourse_json = config.get("DISCOURSE_JSON_PATH", DISCOURSE_JSON_DEFAULT)
 
     # Optional MCP settings
     mcp_url = config.get("MCP_URL")

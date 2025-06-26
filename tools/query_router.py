@@ -30,7 +30,7 @@ class QueryRouter:
         self.discourse = DiscourseSearch(json_path=discourse_json, openai_client=self.openai)
         self.reranker = Reranker(
             user_weights={},
-            source_weights={"slack":1.0, "docs":1.2, "discourse":0.9}
+            source_weights={"slack":1.0, "docs":1.0, "discourse":1.0}
         )
         self.planner = QueryPlanner(self.openai)
         self.faiss_store = faiss_store
@@ -155,14 +155,32 @@ class QueryRouter:
         # Decompose query
         parts = self.planner.plan(query_text)
         combined_contexts = []
-        
-        for part in parts:
-            contexts = self._route_to_source(part, search_source)
-            combined_contexts.extend(contexts)
-        
-        ranked = self.reranker.rerank(combined_contexts)
+        if search_source == "all":
+            # Collect per-source results for each part
+            per_source_contexts = {"slack": [], "docs": [], "discourse": []}
+            for part in parts:
+                # Route to each source individually
+                slack_contexts = self._route_to_source(part, "slack")
+                docs_contexts = self._route_to_source(part, "docs")
+                discourse_contexts = self._route_to_source(part, "discourse")
+                per_source_contexts["slack"].extend(slack_contexts)
+                per_source_contexts["docs"].extend(docs_contexts)
+                per_source_contexts["discourse"].extend(discourse_contexts)
+            # Take top-N from each source (by score)
+            N = 2  # You can tune this number
+            selected_contexts = []
+            for source, ctxs in per_source_contexts.items():
+                # Sort by score descending (if available)
+                ctxs_sorted = sorted(ctxs, key=lambda x: x.score, reverse=True)
+                selected_contexts.extend(ctxs_sorted[:N])
+            # Now rerank the combined pool
+            ranked = self.reranker.rerank(selected_contexts)
+        else:
+            for part in parts:
+                contexts = self._route_to_source(part, search_source)
+                combined_contexts.extend(contexts)
+            ranked = self.reranker.rerank(combined_contexts)
         answer = self._synthesize(query_text, ranked)
-        
         return RAGResponse(
             user_query=user_query, 
             answer=answer, 
@@ -235,10 +253,13 @@ class QueryRouter:
         if not contexts:
             return "No relevant information found."
         
-        # Build context text for the prompt
+        # Sort contexts by score to prioritize higher-scoring results
+        sorted_contexts = sorted(contexts, key=lambda x: x.score, reverse=True)
+        
+        # Build context text for the prompt - increased from 500 to 2000 characters
         context_text = "\n\n".join([
-            f"Source: {ctx.source.upper()}\nTitle: {ctx.metadata.get('title', 'N/A')}\nContent: {ctx.text[:500]}..."
-            for ctx in contexts[:10]
+            f"Source: {ctx.source.upper()}\nTitle: {ctx.metadata.get('title', 'N/A')}\nContent: {ctx.text[:2000]}..."
+            for ctx in sorted_contexts[:8]  # Reduced from 10 to 8 to allow more content per context
         ])
         
         rag_prompt = f"""

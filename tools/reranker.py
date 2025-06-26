@@ -4,7 +4,7 @@ from models.data_models import RetrievedContext
 class Reranker:
     def __init__(self, user_weights: Dict[str, float]=None, source_weights: Dict[str, float]=None):
         self.user_weights = user_weights or {}
-        self.source_weights = source_weights or {"docs": 3.0, "discourse": 2.0, "slack": 1.0}
+        self.source_weights = source_weights or {"docs": 1, "discourse": 1, "slack": 1}
 
     def rerank(self, contexts: List[RetrievedContext]) -> List[RetrievedContext]:
         for ctx in contexts:

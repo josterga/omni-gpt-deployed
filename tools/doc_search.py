@@ -25,28 +25,28 @@ class DocumentSearch:
             text = d.get('content', '')
             texts.append(text)
             self.metadata.append({
-                'id': d.get('id'), 
-                'title': d.get('title'),
-                'content': d.get('content', ''),
-                'url': d.get('file_name', ''),  # Store file_name as URL
+                'id': d.get('id'),
+                'title': d.get('title') or "Documentation",
+                'content': text,
+                'url': d.get('file_name', ''),
                 'category': d.get('category', ''),
+                'token_count': d.get('token_count', 0),
+                'header': d.get('header', ''),
                 'source_type': 'docs'
             })
         self.embeddings = self._embed(texts)
-        dim = self.embeddings.shape[1]  # Use actual embedding dimension
+        dim = self.embeddings.shape[1]
         self.index = faiss.IndexFlatIP(dim)
         faiss.normalize_L2(self.embeddings)
         self.index.add(self.embeddings)
 
     def _embed(self, texts: list[str], model: str = "text-embedding-3-small") -> np.ndarray:
-        max_batch_tokens = 200_000                  # leave ~100k safety margin
-        enc              = tiktoken.encoding_for_model(model)
+        max_batch_tokens = 200_000
+        enc = tiktoken.encoding_for_model(model)
 
-        # ── split texts into token-safe batches ────────────────────────────────
         batches, current, tok_count = [], [], 0
         for txt in texts:
             n = len(enc.encode(txt))
-            # if adding this text would overflow the batch, start a new one
             if current and tok_count + n > max_batch_tokens:
                 batches.append(current)
                 current, tok_count = [], 0
@@ -55,7 +55,6 @@ class DocumentSearch:
         if current:
             batches.append(current)
 
-        # ── embed each batch and concatenate results ──────────────────────────
         vectors: list[list[float]] = []
         for batch in batches:
             resp = self.openai.embeddings.create(model=model, input=batch)
@@ -72,25 +71,22 @@ class DocumentSearch:
         results = []
         for score, idx in zip(D[0], I[0]):
             meta = self.metadata[idx]
-            # Create combined text like the original backup
-            combined_text = f"{meta.get('title', '')} {meta.get('content', '')}"
-            
-            # Create proper URL for docs
+            title = meta.get('title') or "Documentation"
+            header = meta.get('header', '')
+            combined_text = f"{title} – {header}\n\n{meta.get('content', '')}"
+
             url = meta.get('url', '')
             if url:
-                # Remove .md extension
                 clean_path = url.replace('.md', '')
-                # Remove any /##- after the first directory
                 clean_path = re.sub(r'(?<=/)[0-9]{2}-', '', clean_path)
-                # Remove leading s/ if present
                 clean_path = re.sub(r'^s/', '', clean_path)
                 full_url = f"https://docs.omni.co/{clean_path}"
             else:
                 full_url = ""
-            
+
             results.append({
-                'score': float(score), 
-                'metadata': meta,
+                'score': float(score),
+                'metadata': {**meta, 'title': title},
                 'text': combined_text,
                 'url': full_url
             })
