@@ -1,0 +1,685 @@
+{
+  "timestamp": "2025-06-26T14:38:05.779407",
+  "summary": {
+    "total_tests": 11,
+    "total_passed": 11,
+    "total_failed": 0,
+    "overall_success_rate": 100.0,
+    "categories": {
+      "slack": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "success_rate": 100.0
+      },
+      "docs": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "success_rate": 100.0
+      },
+      "discourse": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "success_rate": 100.0
+      }
+    }
+  },
+  "detailed_results": {
+    "slack": [
+      {
+        "query": "how to reference period over period fields in a drill query?",
+        "category": "slack_drill",
+        "timestamp": "2025-06-26T14:35:37.942275",
+        "response_time": 15.81657099723816,
+        "decision": "rag",
+        "actual_response": "1. **Summary**: To reference period-over-period fields in a drill query, you can create filter-only fields for the current and previous periods, use templated filters to link these fields to your date dimension, and then create filtered measures to analyze the data.\n\n2. **Supporting Evidence from provided sources**: \n   - You can create time periods by selecting \"Period over Period\" from the three-dot menu of the date dimension in the field picker. This will provide two dropdowns for selecting the current and comparison periods (Documentation).\n   - For more complex comparisons, such as those without a logical sequential relationship, you can create filter-only fields for `current_period` and `previous_period`, and then use templated filters to apply these selections to your date field. Finally, filtered measures can be created to count occurrences in each period (Discourse).\n\n3. **Gaps or Uncertainties**: The provided context does not specify exact syntax or examples for implementing these concepts in a drill query, which may leave some users needing additional clarification on the implementation details.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "slack"
+          ],
+          "min_response_length": 50,
+          "should_mention_flatten_pivot": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 50,
+            "actual": 1123,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "slack"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_flatten_pivot": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          }
+        },
+        "success": true,
+        "sources_count": 6,
+        "used_cache": false
+      },
+      {
+        "query": "What's our recommendation for setting up customers who have users in multiple regions, including EU?",
+        "category": "slack_regions",
+        "timestamp": "2025-06-26T14:35:51.626816",
+        "response_time": 13.68401312828064,
+        "decision": "rag",
+        "actual_response": "1. **Summary**: To set up customers who have users in multiple regions, including the EU, it is recommended to maintain separate Omni organization accounts for each region, as each account is hosted in a single region.\n\n2. **Supporting Evidence from provided sources**: According to the documentation, \"Each Omni organization account is hosted in a single region. To use Omni across multiple regions, you must maintain an Omni organization account in each region\" (Documentation).\n\n3. **Gaps or Uncertainties**: The provided context does not specify the exact questions to ask customers when setting up these accounts or any specific configurations needed for users in different regions.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "slack"
+          ],
+          "min_response_length": 100,
+          "should_mention_multiple_instances": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 100,
+            "actual": 687,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "slack"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_multiple_instances": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          }
+        },
+        "success": true,
+        "sources_count": 6,
+        "used_cache": false
+      },
+      {
+        "query": "What users get schedule failure notifications?",
+        "category": "slack_schedule",
+        "timestamp": "2025-06-26T14:35:59.977581",
+        "response_time": 8.350482940673828,
+        "decision": "rag",
+        "actual_response": "1. **Summary**: Users who receive schedule failure notifications in Omni are those who have the necessary permissions to create schedules and alerts, as well as those who are designated as recipients for scheduled deliveries.\n\n2. **Supporting Evidence from provided sources**: According to the documentation, to create schedules and alerts, users need to have \"permissions in Omni that allow you to create schedules and alerts\" (Documentation). Additionally, when setting up alerts, users can specify recipients for notifications based on the conditions set in the alerts (Discourse).\n\n3. **Gaps or Uncertainties**: The provided context does not specify exactly which users or roles receive schedule failure notifications, nor does it detail how notifications are specifically configured for failures versus other types of alerts.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "slack"
+          ],
+          "min_response_length": 80,
+          "should_mention_creator": true,
+          "should_mention_email": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 80,
+            "actual": 830,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "slack"
+            ],
+            "actual": [
+              "discourse",
+              "docs"
+            ],
+            "passed": false
+          },
+          "mentions_creator": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          },
+          "mentions_email": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          }
+        },
+        "success": true,
+        "sources_count": 4,
+        "used_cache": false
+      },
+      {
+        "query": "What IPs can I whitelist for my webhook?",
+        "category": "slack_webhook",
+        "timestamp": "2025-06-26T14:36:10.585873",
+        "response_time": 10.608021020889282,
+        "decision": "rag",
+        "actual_response": "1. **Summary**: To whitelist IPs for your webhook in Omni Analytics, you need to refer to the specific IP addresses listed on the individual connection's page within the Omni settings.\n\n2. **Supporting Evidence from provided sources**: According to the documentation, \"webhooks will originate from a set list of IP addresses per environment. Omni's IP addresses can be found on an individual connection's page, accessed by navigating to **Settings > Connections** and clicking a connection\" (Documentation).\n\n3. **Gaps or Uncertainties**: The provided information does not specify the actual IP addresses that need to be whitelisted, as these are unique to each connection and must be accessed through the Omni interface.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "slack"
+          ],
+          "min_response_length": 60,
+          "should_mention_connection": true,
+          "should_mention_allowlist": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 60,
+            "actual": 721,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "slack"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_connection": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "mentions_allowlist": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          }
+        },
+        "success": true,
+        "sources_count": 5,
+        "used_cache": false
+      }
+    ],
+    "docs": [
+      {
+        "query": "How do I use default_filters in a topic?",
+        "category": "docs_modeling",
+        "timestamp": "2025-06-26T14:36:29.623354",
+        "response_time": 19.037261247634888,
+        "decision": "rag",
+        "actual_response": "1. **Summary**: To use `default_filters` in a topic, you can define them in the topic's model file. These filters will apply to all queries made on that topic unless overridden by specific filters.\n\n2. **Supporting Evidence from provided sources**: According to the Slack discussions, the `default_filters` parameter can be used in a topic to persist filters across all queries (Slack). Additionally, it's noted that `default_filters` are optional and will not be added to existing queries unless specified (Slack). The official documentation provides further context on how to implement default access filters, which can be similar in concept to default filters, ensuring that they apply when no specific filters are defined in the topic (Documentation).\n\n3. **Gaps or Uncertainties**: The provided context does not specify the exact syntax or examples for implementing `default_filters` within a topic, nor does it clarify how they interact with other types of filters.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "docs"
+          ],
+          "min_response_length": 150,
+          "should_mention_topic": true,
+          "should_mention_default_filter": true,
+          "should_mention_model": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 150,
+            "actual": 971,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "docs"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_topic": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "mentions_default_filter": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "mentions_model": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          }
+        },
+        "success": true,
+        "sources_count": 6,
+        "used_cache": false
+      },
+      {
+        "query": "does accessboost apply to workbooks or only dashboard?",
+        "category": "docs_access",
+        "timestamp": "2025-06-26T14:36:42.350368",
+        "response_time": 12.726840019226074,
+        "decision": "rag",
+        "actual_response": "1. **Summary**: AccessBoost applies only to dashboards and does not extend to workbooks. Users will have boosted access to data displayed in dashboards, but their connection roles will still be respected when querying at the workbook level.\n\n2. **Supporting Evidence from provided sources**: According to the documentation, \"AccessBoost only alters the access to the data on a dashboard. AccessBoost still respects a user's connection role when the user runs a query at the workbook level\" (Documentation). Additionally, a confirmation from the product team stated, \"it is expected that currently AccessBoost only applies to the dashboard. It does not apply to readonly workbooks\" (Slack).\n\n3. **Gaps or Uncertainties**: There are no gaps in the information provided regarding the application of AccessBoost to workbooks and dashboards.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "docs"
+          ],
+          "min_response_length": 200,
+          "should_mention_accessboost": true,
+          "should_mention_workbook": true,
+          "should_mention_dashboard": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 200,
+            "actual": 836,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "docs"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_accessboost": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "mentions_workbook": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "mentions_dashboard": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          }
+        },
+        "success": true,
+        "sources_count": 6,
+        "used_cache": false
+      },
+      {
+        "query": "What are query models and how are they used?",
+        "category": "docs_modeling",
+        "timestamp": "2025-06-26T14:36:56.274626",
+        "response_time": 13.92399263381958,
+        "decision": "rag",
+        "actual_response": "1. **Summary**: Query models in Omni Analytics are specific to individual queries and allow for the creation of query fields that do not impact the global data model. They enable users to customize SQL queries and manage how fields are represented within those queries.\n\n2. **Supporting Evidence from provided sources**: \n   - Query models do not affect the global data model or the behavior of fields in other workbooks or queries. Modifications made in query models are typically intended to be promoted to the workbook model instead of remaining isolated (Documentation).\n   - When editing SQL in the Advanced Editor, Omni will create query fields specific to that query if the SQL contains fields that do not match those in the workbook or shared model (Documentation).\n   - Users can also give these query fields friendly names through aliases, and they have the option to promote these fields to the workbook or save the query as a view (Documentation).\n\n3. **Gaps or Uncertainties**: The context does not provide detailed examples of how query models are practically implemented in various scenarios or the specific benefits of using them over other modeling techniques.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "docs"
+          ],
+          "min_response_length": 300,
+          "should_mention_query_model": true,
+          "should_mention_sql": true,
+          "should_mention_data": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 300,
+            "actual": 1177,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "docs"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_query_model": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          },
+          "mentions_sql": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "mentions_data": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          }
+        },
+        "success": true,
+        "sources_count": 6,
+        "used_cache": false
+      },
+      {
+        "query": "Can a filter apply to multiple charts?",
+        "category": "docs_filters",
+        "timestamp": "2025-06-26T14:37:01.836172",
+        "response_time": 5.561321973800659,
+        "decision": "rag",
+        "actual_response": "1. **Summary**: Yes, a filter can apply to multiple charts in Omni Analytics, allowing users to utilize a single filter across different visualizations with varying fields.\n\n2. **Supporting Evidence from provided sources**: According to a Slack conversation, it is mentioned that \"one 'order item status' filter can be applied to multiple charts with one filter and with different fields\" (Slack). Additionally, the community discussion highlights that you can make a filter selection on one dashboard tab and apply those same filters across other tabs, indicating the capability of shared filters across different visualizations (Discourse).\n\n3. **Gaps or Uncertainties**: The provided context does not specify the technical limitations or specific configurations required to implement such filters across different charts, nor does it detail how to set up these filters in practice.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "docs"
+          ],
+          "min_response_length": 120,
+          "should_mention_filter": true,
+          "should_mention_map": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 120,
+            "actual": 884,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "docs"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_filter": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "mentions_map": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          }
+        },
+        "success": true,
+        "sources_count": 6,
+        "used_cache": false
+      }
+    ],
+    "discourse": [
+      {
+        "query": "How could I share a dashboard from Omni to Google Sheets?",
+        "category": "discourse_community",
+        "timestamp": "2025-06-26T14:37:18.468173",
+        "response_time": 16.63174605369568,
+        "decision": "rag",
+        "actual_response": "1. **Summary**  \nTo share a dashboard from Omni to Google Sheets, you can use either Zapier to catch webhooks from Omni or set up a Google Apps Script to export data directly to Google Sheets.\n\n2. **Supporting Evidence from provided sources**  \n- Using **Zapier**: You need an Omni dashboard with a tile configured for export, a Zapier account (which may require a Pro plan), and an existing Google Sheet. You can follow the guide on sending Omni webhook deliveries to Zapier to export data in CSV format to Google Sheets (Documentation).\n- Using **Google Apps Script**: Similar to Zapier, you need an Omni dashboard with a tile configured for export and an existing Google Sheet. You can copy a Google Apps Script template to facilitate the data export (Documentation).\n- Additionally, if you have Google Cloud Platform (GCP), you can create a cloud function to send data to Google Sheets. This involves enabling the Google Sheets API, creating a service account, and configuring a scheduled delivery in Omni with the appropriate endpoint URL (Discourse).\n\n3. **Gaps or Uncertainties**  \nThe context does not provide specific step-by-step instructions for using Zapier or Google Apps Script, nor does it clarify if there are any limitations on the types of data that can be exported.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "discourse"
+          ],
+          "min_response_length": 100,
+          "should_mention_google_cloud_function": true,
+          "should_mention_webhook": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 100,
+            "actual": 1284,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "discourse"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_google_cloud_function": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          },
+          "mentions_webhook": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          }
+        },
+        "success": true,
+        "sources_count": 6,
+        "used_cache": false
+      },
+      {
+        "query": "How can I filter on a dimension I'm pivoting on",
+        "category": "discourse_filter",
+        "timestamp": "2025-06-26T14:37:59.048082",
+        "response_time": 40.57948088645935,
+        "decision": "mcp",
+        "actual_response": "1. **Summary**: To filter on a dimension you are pivoting on, you can use the options menu to apply a filter that references another query, allowing you to narrow down the results based on specific criteria.\n\n2. **Supporting Evidence from provided sources**: According to the documentation, you can filter by another query by clicking the **options menu** (three dots) on the dimension and selecting **Filter**. Then, choose **Is from another query** and select the appropriate tab and dimension to filter by (Documentation). This method generates SQL `WHERE` clauses that effectively filter the results based on your selection.\n\n3. **Gaps or Uncertainties**: The provided context does not specify any limitations or additional steps that may be required when filtering on a pivoted dimension, nor does it address potential performance implications of such filters.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "discourse"
+          ],
+          "min_response_length": 120,
+          "should_mention_filter_by_query": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 120,
+            "actual": 865,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "discourse"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_filter_by_query": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          }
+        },
+        "success": true,
+        "sources_count": 6,
+        "used_cache": false
+      },
+      {
+        "query": "What is the square icon field picker?",
+        "category": "discourse_troubleshooting",
+        "timestamp": "2025-06-26T14:38:05.779134",
+        "response_time": 6.7308619022369385,
+        "decision": "rag",
+        "actual_response": "1. **Summary**: The square icon in the field picker is associated with an unknown type, indicating that it does not represent standard data types such as date, number, string, or boolean.\n\n2. **Supporting Evidence from provided sources**: In a Slack conversation, a user mentions an \"unknown square icon\" in relation to the field picker (Slack). Additionally, another user queries if a field has the \"little unknown square icon next to it in the field picker\" (Slack). This suggests that the square icon is recognized but not clearly defined in terms of its data type.\n\n3. **Gaps or Uncertainties**: The provided context does not specify what the unknown type represented by the square icon is or how it should be used within the field picker.",
+        "expected_criteria": {
+          "should_route_to": "rag",
+          "should_include_sources": true,
+          "source_types": [
+            "discourse"
+          ],
+          "min_response_length": 150,
+          "should_mention_unknown": true,
+          "should_mention_cast": true
+        },
+        "validation_results": {
+          "min_response_length": {
+            "expected": 150,
+            "actual": 743,
+            "passed": true
+          },
+          "routing": {
+            "expected": "rag",
+            "actual": "rag",
+            "passed": true
+          },
+          "sources_included": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "source_types": {
+            "expected": [
+              "discourse"
+            ],
+            "actual": [
+              "discourse",
+              "docs",
+              "slack"
+            ],
+            "passed": true
+          },
+          "mentions_unknown": {
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          "mentions_cast": {
+            "expected": true,
+            "actual": false,
+            "passed": false
+          }
+        },
+        "success": true,
+        "sources_count": 6,
+        "used_cache": false
+      }
+    ]
+  }
+}

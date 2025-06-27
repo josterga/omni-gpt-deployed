@@ -151,11 +151,13 @@ class QueryRouter:
             except Exception as e:
                 print(f"MCP call failed: {e}")
                 # Fall back to RAG
+                decision = "rag"
         
         # RAG processing
         # Decompose query
         parts = self.planner.plan(query_text)
         combined_contexts = []
+        
         if search_source == "all":
             # Collect per-source results for each part
             per_source_contexts = {"slack": [], "docs": [], "discourse": []}
@@ -172,15 +174,25 @@ class QueryRouter:
             selected_contexts = []
             for source, ctxs in per_source_contexts.items():
                 # Sort by score descending (if available)
-                ctxs_sorted = sorted(ctxs, key=lambda x: x.score, reverse=True)
-                selected_contexts.extend(ctxs_sorted[:N])
+                if ctxs:
+                    ctxs_sorted = sorted(ctxs, key=lambda x: getattr(x, 'score', 0.0), reverse=True)
+                    selected_contexts.extend(ctxs_sorted[:N])
             # Now rerank the combined pool
-            ranked = self.reranker.rerank(selected_contexts)
+            try:
+                ranked = self.reranker.rerank(selected_contexts)
+            except Exception as e:
+                print(f"Ranking failed: {e}")
+                ranked = selected_contexts  # Fallback to unranked
         else:
             for part in parts:
                 contexts = self._route_to_source(part, search_source)
                 combined_contexts.extend(contexts)
-            ranked = self.reranker.rerank(combined_contexts)
+            try:
+                ranked = self.reranker.rerank(combined_contexts)
+            except Exception as e:
+                print(f"Ranking failed: {e}")
+                ranked = combined_contexts  # Fallback to unranked
+        
         answer = self._synthesize(query_text, ranked)
         return RAGResponse(
             user_query=user_query, 
@@ -306,7 +318,7 @@ class QueryRouter:
     - Do not restate entire paragraphs.
 
     3. **Unanswered Questions** *(if applicable)*  
-    - Note any aspects of the user’s question that the provided information does **not** answer.  
+    - Note any aspects of the user's question that the provided information does **not** answer.  
     - Be concise but honest about the gap.
     - If there are no unanswered questions, don't include this section as part of your answer.
 
