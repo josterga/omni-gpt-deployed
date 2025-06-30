@@ -1,5 +1,4 @@
 import logging
-import snowflake.connector
 import datetime
 import json
 import os
