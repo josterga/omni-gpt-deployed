@@ -3,6 +3,8 @@ Test runner for OmniGPT query validation
 
 This script runs the test queries against your OmniGPT system and validates
 the responses against expected criteria.
+
+To run: python -m tests.test_runner
 """
 
 import json

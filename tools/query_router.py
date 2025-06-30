@@ -10,6 +10,8 @@ from models.data_models import RAGResponse, RetrievedContext, UserQuery
 import numpy as np
 import faiss
 import tiktoken
+import logging
+from store.session_utils import get_current_session_id
 
 class QueryRouter:
     def __init__(
@@ -24,6 +26,7 @@ class QueryRouter:
         mcp_model_id: str = None,
         mcp_topic: str = None,
     ):
+        self.logger = logging.getLogger("omni_gpt.query_router")
         # Core clients
         self.openai = OpenAI(api_key=openai_api_key)
         self.slack = SlackSearch(token=slack_token, openai_client=self.openai)
@@ -72,11 +75,11 @@ class QueryRouter:
             )
 
             decision_raw = resp.choices[0].message.content.strip().lower()
-            print(f"[DEBUG] OpenAI routing raw response: {decision_raw}")
+            self.logger.info("Routing decision", extra={"event_type": "ROUTING", "details": {"query": query, "decision": decision_raw, "session_id": get_current_session_id()}})
             return decision_raw if decision_raw in {"rag", "mcp"} else "rag"
 
         except Exception as e:
-            print(f"Routing failed: {e}")
+            self.logger.error("Routing failed", extra={"event_type": "ROUTING_ERROR", "details": {"query": query, "error": str(e), "session_id": get_current_session_id()}})
             return "rag"
 
     def get_embeddings(self, texts: list[str]) -> np.ndarray:
@@ -116,9 +119,9 @@ class QueryRouter:
     BYPASS_CACHE = True  # Set to True to always bypass cache, False to enable cache
 
     def handle_query(self, user_query: UserQuery, search_source: str = "all", cache_index=None, cache_turns=None, decision=None) -> RAGResponse:
-        # Hardcoded cache bypass
         bypass_cache = self.BYPASS_CACHE
         query_text = user_query.text.rstrip("\n")
+        self.logger.info("User query input", extra={"event_type": "USER_QUERY_INPUT", "details": {"query": query_text}, "session_id": get_current_session_id()})
         
         # Check cache if not bypassed
         cached_turn = None
@@ -126,7 +129,7 @@ class QueryRouter:
             cached_turn = self.check_cache(query_text, cache_index, cache_turns)
         
         if cached_turn:
-            # Return cached response
+            self.logger.info("Cache hit", extra={"event_type": "CACHE_HIT", "details": {"query": user_query.text, "session_id": get_current_session_id()}})
             return RAGResponse(
                 user_query=user_query,
                 answer=cached_turn.get("assistant_response", "") + "\n\n*Results from cache*",
@@ -138,9 +141,11 @@ class QueryRouter:
         if decision is None:
             decision = self.decide_rag_or_mcp(query_text)
         
+        self.logger.info("Planned routing decision", extra={"event_type": "PLANNED_ROUTING", "details": {"decision": decision, "query": query_text}, "session_id": get_current_session_id()})
         if decision == "mcp" and self.mcp:
             try:
                 mcp_response = self.mcp.run_inference(query_text)
+                self.logger.info("MCP call success", extra={"event_type": "MCP_CALL", "details": {"query": query_text, "result": mcp_response}, "session_id": get_current_session_id()})
                 return RAGResponse(
                     user_query=user_query,
                     answer=mcp_response,
@@ -149,13 +154,17 @@ class QueryRouter:
                     reranking_info={"routing": "mcp"}
                 )
             except Exception as e:
-                print(f"MCP call failed: {e}")
+                self.logger.error("MCP call failed", extra={"event_type": "MCP_ERROR", "details": {"query": query_text, "error": str(e)}, "session_id": get_current_session_id()})
                 # Fall back to RAG
                 decision = "rag"
         
         # RAG processing
         # Decompose query
-        parts = self.planner.plan(query_text)
+        # Get top-3 relevant doc context for planner
+        doc_results = self.docs.search(query_text, top_k=3)
+        doc_context = "\n\n".join([r.get('text', '') for r in doc_results]) if doc_results else None
+        parts = self.planner.plan(query_text, doc_context=doc_context)
+        self.logger.info("Planned queries", extra={"event_type": "PLANNED_QUERIES", "details": {"parts": parts}, "session_id": get_current_session_id()})
         combined_contexts = []
         
         if search_source == "all":
@@ -169,6 +178,7 @@ class QueryRouter:
                 per_source_contexts["slack"].extend(slack_contexts)
                 per_source_contexts["docs"].extend(docs_contexts)
                 per_source_contexts["discourse"].extend(discourse_contexts)
+                self.logger.info("Source results", extra={"event_type": "SOURCE_RESULTS", "details": {"part": part, "slack": [ctx.text for ctx in slack_contexts], "docs": [ctx.text for ctx in docs_contexts], "discourse": [ctx.text for ctx in discourse_contexts]}, "session_id": get_current_session_id()})
             # Take top-N from each source (by score)
             N = 2  # You can tune this number
             selected_contexts = []
@@ -187,13 +197,16 @@ class QueryRouter:
             for part in parts:
                 contexts = self._route_to_source(part, search_source)
                 combined_contexts.extend(contexts)
+                self.logger.info("Source results", extra={"event_type": "SOURCE_RESULTS", "details": {"part": part, search_source: [ctx.text for ctx in contexts]}, "session_id": get_current_session_id()})
             try:
                 ranked = self.reranker.rerank(combined_contexts)
             except Exception as e:
                 print(f"Ranking failed: {e}")
                 ranked = combined_contexts  # Fallback to unranked
         
+        self.logger.info("Ranked contexts", extra={"event_type": "RANKED_CONTEXTS", "details": {"ranked": [ctx.text for ctx in ranked]}, "session_id": get_current_session_id()})
         answer = self._synthesize(query_text, ranked)
+        self.logger.info("Final result", extra={"event_type": "FINAL_RESULT", "details": {"answer": answer}, "session_id": get_current_session_id()})
         return RAGResponse(
             user_query=user_query, 
             answer=answer, 

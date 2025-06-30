@@ -135,4 +135,4 @@ class MCPClient:
         except Exception as e:
             print(f"MCP inference failed: {e}")
             # Return a fallback response
-            return f"I apologize, but I encountered an error while processing your request through the data system. The error was: {str(e)}. Please try rephrasing your question or contact support if the issue persists."
+            return f"I apologize, but I encountered an error while processing your request. The error was: {str(e)}. Please try rephrasing your question or contact support if the issue persists."

@@ -15,6 +15,8 @@ from ui.chat_view import (
     render_search_interface
 )
 from models.data_models import UserQuery, RAGResponse
+import logging
+from tools.logging_utils import ExtraFormatter
 
 # Constants
 CHAT_LOG_PATH = "chat_history.json"
@@ -23,6 +25,17 @@ BYPASS_CACHE = True  # Set to True to always bypass cache, False to enable cache
 # Update default paths for embeddings
 DOCS_JSON_DEFAULT = "models/embeddings/temp_docs.json"
 DISCOURSE_JSON_DEFAULT = "models/embeddings/discourse_embeddings.json"
+
+# Logging setup
+logger = logging.getLogger("omni_gpt")
+logger.setLevel(logging.INFO)
+# Only add handlers if not already present
+if not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(ExtraFormatter('%(levelname)s %(name)s: %(message)s'))
+    logger.addHandler(console_handler)
+
 
 @st.cache_data
 def load_history_cached(path: str) -> list[dict]:

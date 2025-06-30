@@ -4,22 +4,36 @@ class QueryPlanner:
     def __init__(self, openai_client: OpenAI):
         self.openai = openai_client
 
-    def plan(self, text: str) -> list[str]:
+    def plan(self, text: str, doc_context: str) -> list[str]:
         """
         Break a complex question into independent subquestions. Returns a list of subquery strings.
-        Falls back to the original question if parsing fails.
+        Requires doc_context for more informed decomposition.
         """
         import json
+        if not doc_context:
+            raise ValueError("doc_context is required for query planning.")
         prompt = (
-            "Return one to three retrieval queries that maximise recall."
-            "NEVER drop domain-specific tokens."
-            "KEEP multi-word concepts together (e.g. “default_required_access_grants workbook model”)."
-            "FLATTEN table, view, or column identifiers to their generic type (e.g. prod.sales_fact_daily → table)."
-            "Split only when the question truly contains separate topics (e.g. two companies to compare)."
-            "Limit the entire JSON array to ≤ 25 tokens."
-            "Output just the queries as a JSON array of strings."
-            f"\n\nQuestion: {text}"
+            "You are a query planner. Your task is to break down a complex user query into a small list of independent subqueries, each representing a unique retrievable concept.\n\n"
+            "Definitions:\n"
+            "- A subquery is a short, search-optimized string (5-10 tokens) representing one concept from the user question.\n"
+            "- Subqueries should maximize recall, not precision.\n"
+            "- NEVER drop technical tokens (e.g. 'semantic layer', 'required_access_grants').\n"
+            "- KEEP multi-word concepts together.\n"
+            "- FLATTEN identifiers: table/view names like `prod.sales_fact_daily` → 'table'.\n"
+            "- DO NOT include boolean operators, quotes, or join words.\n"
+            "- DO NOT repeat information from the reference context.\n\n"
+            "Constraints:\n"
+            "- Return a flat JSON array of strings.\n"
+            "- Limit the entire array to ≤ 25 tokens total.\n"
+            "- Return nothing else (no explanation, no headers).\n\n"
+            "Examples:\n"
+            "Q: What’s the difference between cost modeling in semantic layer vs metrics layer?\n"
+            "A: [\"cost modeling semantic layer\", \"cost modeling metrics layer\"]\n\n"
+            "Q: Compare default access grants in workbook vs model files.\n"
+            "A: [\"default access grants workbook\", \"default access grants model\"]\n\n"
         )
+        prompt += f"\n\nReference documentation (do not quote):\n{doc_context[:3000]}"
+        prompt += f"\n\nUser Question:\n{text}"
         try:
             resp = self.openai.chat.completions.create(
                 model="gpt-4o-mini",

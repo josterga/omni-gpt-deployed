@@ -2,16 +2,21 @@ import json
 from typing import List
 from datetime import datetime
 from models.data_models import RAGResponse, UserQuery
+import logging
+from store.session_utils import get_current_session_id
 
 class HistoryStore:
     def __init__(self, path: str):
+        self.logger = logging.getLogger("omni_gpt.history_store")
         self.path = path
 
     def load_sessions(self) -> List[RAGResponse]:
         try:
             with open(self.path, 'r') as f:
                 data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+            self.logger.info("Loaded sessions", extra={"event_type": "HISTORY_LOAD", "details": {"path": self.path, "count": len(data) if isinstance(data, list) else 0, "session_id": get_current_session_id()}})
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            self.logger.warning("Failed to load sessions", extra={"event_type": "HISTORY_LOAD_FAIL", "details": {"path": self.path, "error": str(e), "session_id": get_current_session_id()}})
             return []
 
         sessions: List[RAGResponse] = []
@@ -89,3 +94,4 @@ class HistoryStore:
         data.append(record)
         with open(self.path, 'w') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        self.logger.info("Saved turn", extra={"event_type": "HISTORY_SAVE", "details": {"path": self.path, "session_id": get_current_session_id()}})

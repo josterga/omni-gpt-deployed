@@ -6,9 +6,12 @@ import faiss
 import re
 import tiktoken
 import os
+import logging
+from store.session_utils import get_current_session_id
 
 class SlackSearch:
     def __init__(self, token: str, openai_client):
+        self.logger = logging.getLogger("omni_gpt.slack_search")
         if not token or token == "None":
             print("Warning: No Slack token provided. Slack search will be disabled.")
             self.client = None
@@ -94,12 +97,9 @@ class SlackSearch:
     def search_messages(self, query: str, count: int = 50) -> List[Dict]:
         contexts = []
         if self.client is None:
-            print("Slack search disabled - no valid token")
+            self.logger.warning("Slack search disabled - no valid token", extra={"event_type": "SLACK_DISABLED", "session_id": get_current_session_id()})
             return []
-
         salted_query = self.enhanced_salt_query(query)
-        # print(f"Slack search query: {salted_query}")
-
         try:
             response = self.client.search_messages(
                 query=salted_query,
@@ -112,19 +112,18 @@ class SlackSearch:
                 messages = response.get('messages', {}).get('matches', [])
                 if messages:
                     contexts = self.extract_thread_contexts(messages)
-                    # Rerank by semantic similarity
                     contexts = self.rank_contexts_by_relevance(query, contexts)
+                    self.logger.info("Slack search success", extra={"event_type": "SLACK_SEARCH", "details": {"query": query, "result_count": len(contexts)}, "session_id": get_current_session_id()})
                     return contexts
+                self.logger.info("Slack search no results", extra={"event_type": "SLACK_SEARCH", "details": {"query": query, "result_count": 0}, "session_id": get_current_session_id()})
                 return contexts
+            self.logger.warning("Slack search failed", extra={"event_type": "SLACK_SEARCH_FAIL", "details": {"query": query}, "session_id": get_current_session_id()})
             return []
         except SlackApiError as e:
-            if e.response['error'] == 'not_authed':
-                print("Slack API error: Invalid or missing authentication token")
-            else:
-                print(f"Slack API error: {e.response['error']}")
+            self.logger.error("Slack API error", extra={"event_type": "SLACK_API_ERROR", "details": {"query": query, "error": str(e)}, "session_id": get_current_session_id()})
             return []
         except Exception as e:
-            print(f"Unexpected error in Slack search: {e}")
+            self.logger.error("Unexpected error in Slack search", extra={"event_type": "SLACK_SEARCH_ERROR", "details": {"query": query, "error": str(e)}, "session_id": get_current_session_id()})
             return []
 
     def get_thread_context(self, channel_id: str, thread_ts: str) -> List[Dict]:
