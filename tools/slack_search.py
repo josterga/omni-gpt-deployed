@@ -66,7 +66,7 @@ class SlackSearch:
             return user_query
 
     def enhanced_salt_query(self, user_query: str) -> str:
-        salt_terms = "-in:customer-sla-breach -in:customer-triage -in:marketing -in:sales -in:support-overflow -in:omnis -in:tofu -in:customer-membership-alerts -in:optys-qual-haul -in:sigma-compete -in:closed-lost-notifications -in:vector-alerts -in:notifications-alerts -cypress -github -sentry -squadcast -syften"
+        salt_terms = "-in:customer-sla-breach -in:customer-triage -in:support-overflow -in:omnis -in:tofu -in:customer-membership-alerts -in:vector-alerts -in:notifications-alerts -cypress -github -sentry -squadcast -syften"
 
         if any(word in user_query.lower() for word in ["who", "when", "where", "in channel", "from", "by", "shared", "posted", "yesterday", "last week", "files"]):
             try:
